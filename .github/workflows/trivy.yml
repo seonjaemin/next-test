@@ -3,7 +3,12 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: trivy
+# This workflow file requires a free account on Semgrep.dev to
+# manage rules, file ignores, notifications, and more.
+#
+# See https://semgrep.dev/docs
+
+name: Security Scan
 
 on:
   push:
@@ -12,18 +17,45 @@ on:
     # The branches below must be a subset of the branches above
     branches: [ "main" ]
   schedule:
-    - cron: '23 18 * * 6'
+    - cron: '23 1 * * 2' # Semgrep 스케줄
+    - cron: '23 18 * * 6' # Trivy 스케줄
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  semgrep:
     permissions:
       contents: read # for actions/checkout to fetch code
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
-    name: Build
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout project source
+      - uses: actions/checkout@v4
+
+      # Scan code using project's configuration on https://semgrep.dev/manage
+      - uses: returntocorp/semgrep-action@fcd5ab7459e8d91cb1777481980d1b18b4fc6735
+        with:
+          publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
+          publishDeployment: ${{ secrets.SEMGREP_DEPLOYMENT_ID }}
+          generateSarif: "1"
+
+      # Upload SARIF file generated in previous step
+      - name: Upload Semgrep SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+        if: always()
+
+  build:
+    needs: semgrep # Semgrep 실행 후에 빌드 실행
+    permissions:
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    name: Build and Trivy Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
