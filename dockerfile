@@ -15,5 +15,5 @@ RUN npm install
 # 포트를 노출합니다.
 EXPOSE 3000
 
-# 애플리케이션을 실행합니다.
+# 애플리케이션을 실행합니다.11
 CMD ["node", "server.js"]
